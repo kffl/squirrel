@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -126,6 +127,12 @@ func (d *insertData) appendValuesToSQL(w io.Writer, args []interface{}) ([]inter
 		valueStrings := make([]string, len(row))
 		for v, val := range row {
 			if vs, ok := val.(Sqlizer); ok {
+				if reflect.ValueOf(vs).Kind() == reflect.Ptr &&
+					reflect.ValueOf(vs).IsNil() {
+					valueStrings[v] = "NULL"
+					continue
+				}
+
 				vsql, vargs, err := vs.ToSql()
 				if err != nil {
 					return nil, err

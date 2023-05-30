@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -83,16 +84,21 @@ func (d *updateData) ToSql() (sqlStr string, args []interface{}, err error) {
 	for i, setClause := range d.SetClauses {
 		var valSql string
 		if vs, ok := setClause.value.(Sqlizer); ok {
-			vsql, vargs, err := vs.ToSql()
-			if err != nil {
-				return "", nil, err
-			}
-			if _, ok := vs.(SelectBuilder); ok {
-				valSql = fmt.Sprintf("(%s)", vsql)
+			if reflect.ValueOf(vs).Kind() == reflect.Ptr &&
+				reflect.ValueOf(vs).IsNil() {
+				valSql = "NULL"
 			} else {
-				valSql = vsql
+				vsql, vargs, err := vs.ToSql()
+				if err != nil {
+					return "", nil, err
+				}
+				if _, ok := vs.(SelectBuilder); ok {
+					valSql = fmt.Sprintf("(%s)", vsql)
+				} else {
+					valSql = vsql
+				}
+				args = append(args, vargs...)
 			}
-			args = append(args, vargs...)
 		} else {
 			valSql = "?"
 			args = append(args, setClause.value)
